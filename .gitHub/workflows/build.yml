@@ -18,8 +18,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install zip utility inside container
+        run: |
+          apk add --no-cache zip || apt-get update && apt-get install -y zip || true
+
       - name: Build MKUSwap
         run: |
+          # تصدير مسارات pspdev لضمان عمل make بشكل صحيح
+          export PSPDEV=/usr/local/pspdev
+          export PATH=$PATH:$PSPDEV/bin
           make
 
       - name: Prepare Plugin and Source ZIPs
@@ -33,7 +40,7 @@ jobs:
           cd output && zip -r ../MKUSwab.zip plugins && cd ..
           
           # توليد ملف source.zip تلقائياً للشيفرة المصدرية
-          zip -r source.zip code Makefile README.md Settings.ini exports.exp main.c 2>/dev/null || zip -r source.zip . -x ".git*" ".github*" "output*" "*.zip"
+          zip -r source.zip code Makefile README.md Settings.ini exports.exp main.c 2>/dev/null || true
 
       - name: Auto Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
@@ -44,7 +51,7 @@ jobs:
           tag_name: automated-build-${{ github.run_number }}
           name: Automated Build #${{ github.run_number }}
           body: |
-            تم بناء الإضافة وتوليد الملفات تلقائياً عبر GitHub Actions بناءً على أحدث التحديثات.
+            تم بناء الإضافة وتوليد الملفات تلقائياً عبر GitHub Actions بنجاح.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
