@@ -1,56 +1,50 @@
-name: Build MKUSwap Plugin
+name: Build MKUSwap Plugin Automatically
 
 on:
   push:
-    tags:
-      - 'v*' # يتم تفعيل البناء تلقائياً عند رفع علامة (Tag) تبدأ بحرف v، مثل v1.0.0
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: pspdev/pspdev:latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install PSP Toolchain Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential wget libgmp3-dev libmpfr-dev libmpc-dev bison flex make git
-
-      - name: Setup PPSSPP / PSP SDK environment
-        # ملاحظة: قد تحتاج لاستخدام بيئة جاهزة لأدوات PSP SDK أو تثبيتها هنا
-        # كافتراض، سنفترض توفر بيئة أو Makefile يتعامل مع الـ SDK
-        run: |
-          echo "Setting up PSP environment..."
-          # يمكنك هنا إضافة أوامر تثبيت psp-toolchain إذا لزم الأمر
-
       - name: Build MKUSwap
         run: |
-          cd MKUSwap
           make
 
-      - name: Prepare Plugin ZIP Structure
+      - name: Prepare Plugin and Source ZIPs
         run: |
-          mkdir -p output_zip/plugins/MKUSwab
-          # نسخ الملفات الناتجة و ملفات الإضافة إلى المسار المطلوب
-          cp MKUSwap/*.prx output_zip/plugins/MKUSwab/ 2>/dev/null || true
-          cp MKUSwap/Settings.ini output_zip/plugins/MKUSwab/ 2>/dev/null || true
-          # أضف أي ملفات أخرى مطلوبة للإضافة هنا
+          # تنظيم الملفات الناتجة بالهيكل المطلوب
+          mkdir -p output/plugins/MKUSwab
+          cp *.prx output/plugins/MKUSwab/ 2>/dev/null || true
+          cp Settings.ini output/plugins/MKUSwab/ 2>/dev/null || true
           
-          cd output_zip
-          zip -r ../MKUSwab.zip plugins
-          cd ..
+          # ضغط الإضافة النهائية
+          cd output && zip -r ../MKUSwab.zip plugins && cd ..
+          
+          # توليد ملف source.zip تلقائياً للشيفرة المصدرية
+          zip -r source.zip code Makefile README.md Settings.ini exports.exp main.c 2>/dev/null || zip -r source.zip . -x ".git*" ".github*" "output*" "*.zip"
 
-      - name: Create GitHub Release and Upload Assets
+      - name: Auto Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
             MKUSwab.zip
             source.zip
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          tag_name: automated-build-${{ github.run_number }}
+          name: Automated Build #${{ github.run_number }}
           body: |
-            الإصدار الأول من إضافة MKUSwap لمجلد plugins في PPSSPP.
+            تم بناء الإضافة وتوليد الملفات تلقائياً عبر GitHub Actions بناءً على أحدث التحديثات.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
