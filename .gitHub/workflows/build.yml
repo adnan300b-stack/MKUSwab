@@ -1,1 +1,56 @@
+name: Build MKUSwap Plugin
 
+on:
+  push:
+    tags:
+      - 'v*' # يتم تفعيل البناء تلقائياً عند رفع علامة (Tag) تبدأ بحرف v، مثل v1.0.0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PSP Toolchain Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential wget libgmp3-dev libmpfr-dev libmpc-dev bison flex make git
+
+      - name: Setup PPSSPP / PSP SDK environment
+        # ملاحظة: قد تحتاج لاستخدام بيئة جاهزة لأدوات PSP SDK أو تثبيتها هنا
+        # كافتراض، سنفترض توفر بيئة أو Makefile يتعامل مع الـ SDK
+        run: |
+          echo "Setting up PSP environment..."
+          # يمكنك هنا إضافة أوامر تثبيت psp-toolchain إذا لزم الأمر
+
+      - name: Build MKUSwap
+        run: |
+          cd MKUSwap
+          make
+
+      - name: Prepare Plugin ZIP Structure
+        run: |
+          mkdir -p output_zip/plugins/MKUSwab
+          # نسخ الملفات الناتجة و ملفات الإضافة إلى المسار المطلوب
+          cp MKUSwap/*.prx output_zip/plugins/MKUSwab/ 2>/dev/null || true
+          cp MKUSwap/Settings.ini output_zip/plugins/MKUSwab/ 2>/dev/null || true
+          # أضف أي ملفات أخرى مطلوبة للإضافة هنا
+          
+          cd output_zip
+          zip -r ../MKUSwab.zip plugins
+          cd ..
+
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            MKUSwab.zip
+            source.zip
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            الإصدار الأول من إضافة MKUSwap لمجلد plugins في PPSSPP.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
